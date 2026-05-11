@@ -164,25 +164,40 @@ function sampleFromMeshes(meshes: THREE.Mesh[], count: number): PointCloudData {
 }
 
 /** 加载 .bin 点云文件 */
-async function loadBinFile(file: File): Promise<PointCloudData> {
+async function loadBinFile(file: File, maxCount: number): Promise<PointCloudData> {
   const buffer = await file.arrayBuffer()
   const floats = new Float32Array(buffer)
   const stride = floats.length % 6 === 0 ? 6 : 3
-  const count = floats.length / stride
+  const totalCount = floats.length / stride
+
+  // 如果点云数量超过 maxCount，随机采样子集
+  const count = Math.min(totalCount, maxCount)
+  let indices: number[]
+  if (count < totalCount) {
+    // Fisher-Yates 部分洗牌，只取前 count 个
+    const allIdx = Array.from({ length: totalCount }, (_, i) => i)
+    for (let i = totalCount - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [allIdx[i], allIdx[j]] = [allIdx[j], allIdx[i]]
+    }
+    indices = allIdx.slice(0, count).sort((a, b) => a - b)
+  } else {
+    indices = Array.from({ length: totalCount }, (_, i) => i)
+  }
 
   const positions = new Float32Array(count * 3)
   const normals = stride === 6 ? new Float32Array(count * 3) : undefined
 
   for (let i = 0; i < count; i++) {
-    const s = i * stride
-    const d = i * 3
-    positions[d] = floats[s]
-    positions[d + 1] = floats[s + 1]
-    positions[d + 2] = floats[s + 2]
+    const src = indices[i] * stride
+    const dst = i * 3
+    positions[dst] = floats[src]
+    positions[dst + 1] = floats[src + 1]
+    positions[dst + 2] = floats[src + 2]
     if (normals && stride === 6) {
-      normals[d] = floats[s + 3]
-      normals[d + 1] = floats[s + 4]
-      normals[d + 2] = floats[s + 5]
+      normals[dst] = floats[src + 3]
+      normals[dst + 1] = floats[src + 4]
+      normals[dst + 2] = floats[src + 5]
     }
   }
 
@@ -193,7 +208,7 @@ async function loadBinFile(file: File): Promise<PointCloudData> {
 async function processFile(file: File, particleCount: number): Promise<PointCloudData> {
   const type = getFileType(file.name)
   if (!type) throw new Error(`不支持的格式: ${file.name}`)
-  if (type === 'bin') return loadBinFile(file)
+  if (type === 'bin') return loadBinFile(file, particleCount)
   return loadAndSample(file, particleCount)
 }
 
