@@ -1,3 +1,6 @@
 export { Printer } from './Printer'
-export { Sampler } from './Sampler'
+export { SurfaceSampler } from './samplers/SurfaceSampler'
 export { Wires } from './Wires'
+export { load } from './Loader'
+export type { LoadResult, PointCloudData } from './Loader'
+export type { ISampler } from './ISampler'

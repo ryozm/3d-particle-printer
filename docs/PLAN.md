@@ -13,20 +13,20 @@
 
 ## Phase 1：核心基础 — 模型加载与点云采样
 
-### 1.1 模型加载器 (Loader)
-- [ ] 实现 GLTF/GLB 模型加载（基于 THREE.GLTFLoader）
-- [ ] 实现 .bin 点云二进制文件加载（Float32Array 读取 xyz 坐标）
-- [ ] 统一的输入接口，自动识别文件类型
+### 1.1 模型加载器 (Loader) ✅
+- [x] 实现 GLTF/GLB 模型加载（基于 THREE.GLTFLoader）
+- [x] 实现 .bin 点云二进制文件加载（Float32Array 读取 xyz 坐标）
+- [x] 统一的输入接口，自动识别文件类型
 
-### 1.2 点云采样器 (Sampler)
-- [ ] 定义 Sampler 策略接口 `ISampler`
-- [ ] 实现 SurfaceSampler — 三角面随机采样（默认策略）
-- [ ] 输出标准化的点云数据格式 `{ positions: Float32Array, normals: Float32Array, count: number }`
+### 1.2 点云采样器 (Sampler) ✅
+- [x] 定义 Sampler 策略接口 `ISampler`
+- [x] 实现 SurfaceSampler — 三角面随机采样（默认策略）
+- [x] 输出标准化的点云数据格式 `{ positions: Float32Array, normals: Float32Array, count: number }`
 
-### 1.3 点云渲染
-- [ ] BufferGeometry 构建粒子系统
-- [ ] 基础 GLSL 着色器（vertex + fragment）
-- [ ] 粒子尺寸、颜色控制
+### 1.3 点云渲染 ✅
+- [x] BufferGeometry 构建粒子系统
+- [x] 基础 GLSL 着色器（vertex + fragment）
+- [x] 粒子尺寸、颜色控制
 
 **验收：** 能加载一个 GLB 模型，采样为点云并渲染到画布上
 
@@ -110,7 +110,7 @@
 
 | 阶段 | 状态 | 开始日期 | 完成日期 |
 |------|------|---------|---------|
-| Phase 1 | 🔲 未开始 | — | — |
+| Phase 1 | ✅ 完成 | 2026-05-11 | 2026-05-11 |
 | Phase 2 | 🔲 未开始 | — | — |
 | Phase 3 | 🔲 未开始 | — | — |
 | Phase 4 | 🔲 未开始 | — | — |
