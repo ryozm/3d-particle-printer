@@ -14,7 +14,14 @@ export default /* glsl */ `
   varying float vAlpha;
 
   void main() {
-    float particleProgress = clamp((uProgress - aDelay) * aSpeed * 3.0, 0.0, 1.0);
+    // 每个粒子在不同的进度点开始动画
+    // spread 控制延迟占总进度的比例（0.85 = 前 85% 用于分层延迟，后 15% 留给最顶部粒子完成）
+    float spread = 0.85;
+    float startAt = aDelay * spread;
+    float duration = 1.0 - startAt;
+
+    // 确保 uProgress=1 时所有粒子 particleProgress=1
+    float particleProgress = clamp((uProgress - startAt) / duration * aSpeed, 0.0, 1.0);
     vProgress = particleProgress;
 
     vec3 pos = position;
@@ -23,8 +30,10 @@ export default /* glsl */ `
     float drop = (1.0 - particleProgress) * uDropOffset;
     pos.y += drop;
 
+    // 透明度
     vAlpha = smoothstep(0.0, 0.1, particleProgress);
 
+    // 缩放动画
     float scale = smoothstep(0.0, 0.3, particleProgress);
     float finalSize = uPointSize * scale;
 
