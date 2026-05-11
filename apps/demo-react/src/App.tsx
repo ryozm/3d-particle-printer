@@ -140,19 +140,25 @@ function AutoPlayController({
   loop,
   speed,
   progressRef,
+  startTimeRef,
+  onFinish,
 }: {
   autoPlay: boolean
   loop: boolean
   speed: number
   progressRef: React.MutableRefObject<number>
+  startTimeRef: React.MutableRefObject<number>
+  onFinish: () => void
 }) {
   useFrame(({ clock }) => {
     if (!autoPlay) return
-    const t = clock.getElapsedTime() * speed
+    const elapsed = (clock.getElapsedTime() - startTimeRef.current) * speed
     if (loop) {
-      progressRef.current = (t % 2) / 2
+      progressRef.current = (elapsed % 2) / 2
     } else {
-      progressRef.current = Math.min(t / 2, 1) // 播放到 1 就停
+      const p = Math.min(elapsed / 2, 1)
+      progressRef.current = p
+      if (p >= 1) onFinish()
     }
   })
   return null
@@ -184,12 +190,16 @@ function ProgressSync({
 
 function DebugPanel({
   params,
+  finished,
   onPatch,
   onProgressDrag,
+  onReplay,
 }: {
   params: DebugParams
+  finished: boolean
   onPatch: (p: Partial<DebugParams>) => void
   onProgressDrag: (v: number) => void
+  onReplay: () => void
 }) {
   return (
     <div style={styles.panel}>
@@ -214,12 +224,21 @@ function DebugPanel({
       {/* Auto Play */}
       <div style={styles.row}>
         <label style={styles.label}>Auto Play</label>
-        <button
-          onClick={() => onPatch({ autoPlay: !params.autoPlay })}
-          style={{ ...styles.toggleBtn, background: params.autoPlay ? '#0ff2' : '#fff1' }}
-        >
-          {params.autoPlay ? '⏸ 暂停' : '▶ 播放'}
-        </button>
+        {finished && !params.loop ? (
+          <button
+            onClick={onReplay}
+            style={{ ...styles.toggleBtn, background: '#f662' }}
+          >
+            🔄 重放
+          </button>
+        ) : (
+          <button
+            onClick={() => onPatch({ autoPlay: !params.autoPlay })}
+            style={{ ...styles.toggleBtn, background: params.autoPlay ? '#0ff2' : '#fff1' }}
+          >
+            {params.autoPlay ? '⏸ 暂停' : '▶ 播放'}
+          </button>
+        )}
       </div>
 
       {/* Loop */}
@@ -330,21 +349,53 @@ function DebugPanel({
   )
 }
 
+// ─── 时钟引用捕获 ─────────────────────────────────────
+
+function ClockCapture({ clockRef }: { clockRef: React.MutableRefObject<THREE.Clock | null> }) {
+  useFrame(({ clock }) => {
+    clockRef.current = clock
+  })
+  return null
+}
+
 // ─── App ────────────────────────────────────────────────
 
 export default function App() {
   const [params, setParams] = useState<DebugParams>(DEFAULT_PARAMS)
   const progressRef = useRef(0)
+  const startTimeRef = useRef(0)
+  const clockRef = useRef<THREE.Clock | null>(null)
+  const [finished, setFinished] = useState(false)
+
+  // 勾选回循环时重置 finished
+  useEffect(() => {
+    if (params.loop) setFinished(false)
+  }, [params.loop])
 
   // 手动拖拽：直接写 ref + 更新 state
   const handleProgressDrag = useCallback((v: number) => {
     progressRef.current = v
+    setFinished(false)
     setParams((p) => ({ ...p, progress: v }))
   }, [])
 
   // 面板参数 patch
   const handlePatch = useCallback((patch: Partial<DebugParams>) => {
     setParams((p) => ({ ...p, ...patch }))
+  }, [])
+
+  // 单次播放结束
+  const handleFinish = useCallback(() => {
+    setFinished(true)
+    setParams((p) => ({ ...p, autoPlay: false }))
+  }, [])
+
+  // 重放
+  const handleReplay = useCallback(() => {
+    setFinished(false)
+    progressRef.current = 0
+    startTimeRef.current = clockRef.current?.getElapsedTime() ?? 0
+    setParams((p) => ({ ...p, autoPlay: true, progress: 0 }))
   }, [])
 
   // 自动播放时同步进度到 UI
@@ -370,6 +421,8 @@ export default function App() {
           loop={params.loop}
           speed={params.speed}
           progressRef={progressRef}
+          startTimeRef={startTimeRef}
+          onFinish={handleFinish}
         />
         <ProgressSync
           autoPlay={params.autoPlay}
@@ -377,6 +430,7 @@ export default function App() {
           onSync={handleSync}
         />
         <OrbitControls enableDamping />
+        <ClockCapture clockRef={clockRef} />
       </Canvas>
 
       {/* 标题 */}
@@ -390,8 +444,10 @@ export default function App() {
       {/* 调试面板 */}
       <DebugPanel
         params={params}
+        finished={finished}
         onPatch={handlePatch}
         onProgressDrag={handleProgressDrag}
+        onReplay={handleReplay}
       />
     </div>
   )
