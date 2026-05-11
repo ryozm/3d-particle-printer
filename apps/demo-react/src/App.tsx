@@ -78,7 +78,6 @@ function ParticleCloud({
   glowIntensity,
   blendMode,
 }: ParticleCloudProps) {
-  const materialRef = useRef<THREE.ShaderMaterial>(null!)
   const { positions, delays, speeds, count } = useTestPointCloud(particleCount)
 
   const geometry = useMemo(() => {
@@ -89,62 +88,50 @@ function ParticleCloud({
     return geo
   }, [positions, delays, speeds])
 
-  // 每帧直接从 ref 读取 progress，不触发 re-render
+  // 手动创建材质，不会因 re-render 重建
+  const material = useMemo(() => {
+    return new THREE.ShaderMaterial({
+      vertexShader: particleVert,
+      fragmentShader: particleFrag,
+      uniforms: {
+        uTime: { value: 0 },
+        uProgress: { value: 0 },
+        uColor: { value: new THREE.Color(color) },
+        uPointSize: { value: pointSize },
+        uDropOffset: { value: dropOffset },
+        uGlowIntensity: { value: glowIntensity },
+      },
+      transparent: true,
+      depthWrite: false,
+      blending: blendMode === 'additive' ? THREE.AdditiveBlending : THREE.NormalBlending,
+    })
+  }, []) // 只创建一次
+
+  // 非动画参数同步
+  useEffect(() => { material.uniforms.uColor.value.set(color) }, [material, color])
+  useEffect(() => { material.uniforms.uPointSize.value = pointSize }, [material, pointSize])
+  useEffect(() => { material.uniforms.uDropOffset.value = dropOffset }, [material, dropOffset])
+  useEffect(() => { material.uniforms.uGlowIntensity.value = glowIntensity }, [material, glowIntensity])
+  useEffect(() => {
+    material.blending = blendMode === 'additive' ? THREE.AdditiveBlending : THREE.NormalBlending
+    material.needsUpdate = true
+  }, [material, blendMode])
+
+  // 每帧从 ref 读 progress，直接写 uniform
   useFrame(({ clock }) => {
-    const mat = materialRef.current
-    if (!mat) return
-    mat.uniforms.uTime.value = clock.getElapsedTime()
-    mat.uniforms.uProgress.value = progressRef.current
+    material.uniforms.uTime.value = clock.getElapsedTime()
+    material.uniforms.uProgress.value = progressRef.current
   })
 
-  // 非动画参数通过 useEffect 同步
+  // 组件卸载时释放
   useEffect(() => {
-    const mat = materialRef.current
-    if (!mat) return
-    mat.uniforms.uColor.value.set(color)
-  }, [color])
+    return () => { material.dispose() }
+  }, [material])
 
-  useEffect(() => {
-    const mat = materialRef.current
-    if (!mat) return
-    mat.uniforms.uPointSize.value = pointSize
-  }, [pointSize])
-
-  useEffect(() => {
-    const mat = materialRef.current
-    if (!mat) return
-    mat.uniforms.uDropOffset.value = dropOffset
-  }, [dropOffset])
-
-  useEffect(() => {
-    const mat = materialRef.current
-    if (!mat) return
-    mat.uniforms.uGlowIntensity.value = glowIntensity
-  }, [glowIntensity])
-
-  return (
-    <points geometry={geometry}>
-      <shaderMaterial
-        ref={materialRef}
-        vertexShader={particleVert}
-        fragmentShader={particleFrag}
-        uniforms={{
-          uTime: { value: 0 },
-          uProgress: { value: 0 },
-          uColor: { value: new THREE.Color(color) },
-          uPointSize: { value: pointSize },
-          uDropOffset: { value: dropOffset },
-          uGlowIntensity: { value: glowIntensity },
-        }}
-        transparent
-        depthWrite={false}
-        blending={blendMode === 'additive' ? THREE.AdditiveBlending : THREE.NormalBlending}
-      />
-    </points>
-  )
+  return <primitive object={new THREE.Points(geometry, material)} />
 }
 
-// ─── 自动播放控制器（只更新 ref，不触发 re-render）────
+// ─── 自动播放控制器 ─────────────────────────────────────
 
 function AutoPlayController({
   autoPlay,
@@ -163,21 +150,23 @@ function AutoPlayController({
   return null
 }
 
-// ─── 进度同步（手动拖拽时把 ref 同步回 state 用于显示）──
+// ─── 进度同步回 UI ──────────────────────────────────────
 
 function ProgressSync({
   autoPlay,
   progressRef,
-  onProgressDisplay,
+  onSync,
 }: {
   autoPlay: boolean
   progressRef: React.MutableRefObject<number>
-  onProgressDisplay: (v: number) => void
+  onSync: (v: number) => void
 }) {
+  const frameCount = useRef(0)
   useFrame(() => {
-    if (autoPlay) {
-      // 自动播放时每帧同步到 UI 显示（节流：每 5 帧更新一次 UI）
-      onProgressDisplay(progressRef.current)
+    if (!autoPlay) return
+    frameCount.current++
+    if (frameCount.current % 3 === 0) {
+      onSync(progressRef.current)
     }
   })
   return null
@@ -187,31 +176,28 @@ function ProgressSync({
 
 function DebugPanel({
   params,
-  onParamsChange,
-  onProgressManual,
+  onPatch,
+  onProgressDrag,
 }: {
   params: DebugParams
-  onParamsChange: (p: Partial<DebugParams>) => void
-  onProgressManual: (v: number) => void
+  onPatch: (p: Partial<DebugParams>) => void
+  onProgressDrag: (v: number) => void
 }) {
   return (
     <div style={styles.panel}>
       <div style={styles.panelHeader}>
         <span style={styles.panelTitle}>🎛 Debug Panel</span>
-        <span style={styles.panelHint}>粒子数: {params.particleCount.toLocaleString()}</span>
+        <span style={styles.panelHint}>{params.particleCount.toLocaleString()} particles</span>
       </div>
 
       {/* Progress */}
       <div style={styles.row}>
         <label style={styles.label}>Progress</label>
         <input
-          type="range"
-          min={0}
-          max={1}
-          step={0.001}
+          type="range" min={0} max={1} step={0.001}
           value={params.progress}
           disabled={params.autoPlay}
-          onChange={(e) => onProgressManual(parseFloat(e.target.value))}
+          onChange={(e) => onProgressDrag(parseFloat(e.target.value))}
           style={styles.slider}
         />
         <span style={styles.value}>{(params.progress * 100).toFixed(1)}%</span>
@@ -221,11 +207,8 @@ function DebugPanel({
       <div style={styles.row}>
         <label style={styles.label}>Auto Play</label>
         <button
-          onClick={() => onParamsChange({ autoPlay: !params.autoPlay })}
-          style={{
-            ...styles.toggleBtn,
-            background: params.autoPlay ? '#0ff2' : '#fff1',
-          }}
+          onClick={() => onPatch({ autoPlay: !params.autoPlay })}
+          style={{ ...styles.toggleBtn, background: params.autoPlay ? '#0ff2' : '#fff1' }}
         >
           {params.autoPlay ? '⏸ 暂停' : '▶ 播放'}
         </button>
@@ -234,13 +217,9 @@ function DebugPanel({
       {/* Speed */}
       <div style={styles.row}>
         <label style={styles.label}>Speed</label>
-        <input
-          type="range"
-          min={0.1}
-          max={3}
-          step={0.1}
+        <input type="range" min={0.1} max={3} step={0.1}
           value={params.speed}
-          onChange={(e) => onParamsChange({ speed: parseFloat(e.target.value) })}
+          onChange={(e) => onPatch({ speed: parseFloat(e.target.value) })}
           style={styles.slider}
         />
         <span style={styles.value}>{params.speed.toFixed(1)}x</span>
@@ -249,10 +228,8 @@ function DebugPanel({
       {/* Color */}
       <div style={styles.row}>
         <label style={styles.label}>Color</label>
-        <input
-          type="color"
-          value={params.color}
-          onChange={(e) => onParamsChange({ color: e.target.value })}
+        <input type="color" value={params.color}
+          onChange={(e) => onPatch({ color: e.target.value })}
           style={styles.colorInput}
         />
         <span style={styles.value}>{params.color}</span>
@@ -261,13 +238,9 @@ function DebugPanel({
       {/* Point Size */}
       <div style={styles.row}>
         <label style={styles.label}>Point Size</label>
-        <input
-          type="range"
-          min={0.5}
-          max={10}
-          step={0.1}
+        <input type="range" min={0.5} max={10} step={0.1}
           value={params.pointSize}
-          onChange={(e) => onParamsChange({ pointSize: parseFloat(e.target.value) })}
+          onChange={(e) => onPatch({ pointSize: parseFloat(e.target.value) })}
           style={styles.slider}
         />
         <span style={styles.value}>{params.pointSize.toFixed(1)}</span>
@@ -276,28 +249,20 @@ function DebugPanel({
       {/* Drop Offset */}
       <div style={styles.row}>
         <label style={styles.label}>Drop Offset</label>
-        <input
-          type="range"
-          min={0}
-          max={2}
-          step={0.01}
+        <input type="range" min={0} max={2} step={0.01}
           value={params.dropOffset}
-          onChange={(e) => onParamsChange({ dropOffset: parseFloat(e.target.value) })}
+          onChange={(e) => onPatch({ dropOffset: parseFloat(e.target.value) })}
           style={styles.slider}
         />
         <span style={styles.value}>{params.dropOffset.toFixed(2)}</span>
       </div>
 
-      {/* Glow Intensity */}
+      {/* Glow */}
       <div style={styles.row}>
         <label style={styles.label}>Glow</label>
-        <input
-          type="range"
-          min={0}
-          max={2}
-          step={0.01}
+        <input type="range" min={0} max={2} step={0.01}
           value={params.glowIntensity}
-          onChange={(e) => onParamsChange({ glowIntensity: parseFloat(e.target.value) })}
+          onChange={(e) => onPatch({ glowIntensity: parseFloat(e.target.value) })}
           style={styles.slider}
         />
         <span style={styles.value}>{params.glowIntensity.toFixed(2)}</span>
@@ -306,9 +271,8 @@ function DebugPanel({
       {/* Particle Count */}
       <div style={styles.row}>
         <label style={styles.label}>Particles</label>
-        <select
-          value={params.particleCount}
-          onChange={(e) => onParamsChange({ particleCount: parseInt(e.target.value) })}
+        <select value={params.particleCount}
+          onChange={(e) => onPatch({ particleCount: parseInt(e.target.value) })}
           style={styles.select}
         >
           <option value={10000}>10,000</option>
@@ -322,7 +286,7 @@ function DebugPanel({
       <div style={styles.row}>
         <label style={styles.label}>Blend</label>
         <button
-          onClick={() => onParamsChange({ blendMode: params.blendMode === 'additive' ? 'normal' : 'additive' })}
+          onClick={() => onPatch({ blendMode: params.blendMode === 'additive' ? 'normal' : 'additive' })}
           style={styles.toggleBtn}
         >
           {params.blendMode === 'additive' ? '✨ Additive' : '🔵 Normal'}
@@ -331,9 +295,7 @@ function DebugPanel({
 
       {/* Reset */}
       <div style={{ ...styles.row, justifyContent: 'center' }}>
-        <button onClick={() => onParamsChange(DEFAULT_PARAMS)} style={styles.resetBtn}>
-          ↺ Reset
-        </button>
+        <button onClick={() => onPatch(DEFAULT_PARAMS)} style={styles.resetBtn}>↺ Reset</button>
       </div>
     </div>
   )
@@ -344,41 +306,27 @@ function DebugPanel({
 export default function App() {
   const [params, setParams] = useState<DebugParams>(DEFAULT_PARAMS)
   const progressRef = useRef(0)
-  const frameCounter = useRef(0)
-  const [displayProgress, setDisplayProgress] = useState(0)
 
-  // 同步手动拖拽到 ref
-  useEffect(() => {
-    progressRef.current = params.progress
-  }, [params.progress])
-
-  // 面板参数更新（合并 patch）
-  const handleParamsChange = useCallback((patch: Partial<DebugParams>) => {
-    setParams((prev) => ({ ...prev, ...patch }))
-  }, [])
-
-  // 手动拖拽进度条
-  const handleProgressManual = useCallback((v: number) => {
+  // 手动拖拽：直接写 ref + 更新 state
+  const handleProgressDrag = useCallback((v: number) => {
     progressRef.current = v
     setParams((p) => ({ ...p, progress: v }))
   }, [])
 
-  // 自动播放时同步进度到 UI 显示（每 3 帧更新一次，避免 UI 卡顿）
-  const handleProgressDisplay = useCallback((v: number) => {
-    frameCounter.current++
-    if (frameCounter.current % 3 === 0) {
-      setDisplayProgress(v)
-      setParams((p) => ({ ...p, progress: v }))
-    }
+  // 面板参数 patch
+  const handlePatch = useCallback((patch: Partial<DebugParams>) => {
+    setParams((p) => ({ ...p, ...patch }))
   }, [])
 
-  const progress = params.autoPlay ? displayProgress : params.progress
+  // 自动播放时同步进度到 UI
+  const handleSync = useCallback((v: number) => {
+    setParams((p) => ({ ...p, progress: v }))
+  }, [])
 
   return (
     <div style={{ width: '100vw', height: '100vh', background: '#000' }}>
       <Canvas camera={{ position: [0, 0, 4], fov: 60 }}>
         <color attach="background" args={['#000000']} />
-        <ambientLight intensity={0.5} />
         <ParticleCloud
           progressRef={progressRef}
           color={params.color}
@@ -396,7 +344,7 @@ export default function App() {
         <ProgressSync
           autoPlay={params.autoPlay}
           progressRef={progressRef}
-          onProgressDisplay={handleProgressDisplay}
+          onSync={handleSync}
         />
         <OrbitControls enableDamping />
       </Canvas>
@@ -411,9 +359,9 @@ export default function App() {
 
       {/* 调试面板 */}
       <DebugPanel
-        params={{ ...params, progress }}
-        onParamsChange={handleParamsChange}
-        onProgressManual={handleProgressManual}
+        params={params}
+        onPatch={handlePatch}
+        onProgressDrag={handleProgressDrag}
       />
     </div>
   )
@@ -423,107 +371,36 @@ export default function App() {
 
 const styles: Record<string, React.CSSProperties> = {
   title: {
-    position: 'absolute',
-    top: 20,
-    left: 0,
-    right: 0,
-    textAlign: 'center',
-    color: '#0ff',
-    fontFamily: 'monospace',
-    pointerEvents: 'none',
+    position: 'absolute', top: 20, left: 0, right: 0,
+    textAlign: 'center', color: '#0ff', fontFamily: 'monospace', pointerEvents: 'none',
   },
   panel: {
-    position: 'absolute',
-    top: 16,
-    right: 16,
-    width: 280,
-    background: '#0a0a0aee',
-    border: '1px solid #0ff3',
-    borderRadius: 8,
-    padding: 12,
-    fontFamily: 'monospace',
-    fontSize: 12,
-    color: '#ccc',
+    position: 'absolute', top: 16, right: 16, width: 280,
+    background: '#0a0a0aee', border: '1px solid #0ff3', borderRadius: 8,
+    padding: 12, fontFamily: 'monospace', fontSize: 12, color: '#ccc',
     backdropFilter: 'blur(12px)',
   },
   panelHeader: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-    paddingBottom: 8,
-    borderBottom: '1px solid #0ff2',
+    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+    marginBottom: 12, paddingBottom: 8, borderBottom: '1px solid #0ff2',
   },
-  panelTitle: {
-    color: '#0ff',
-    fontSize: 13,
-    fontWeight: 'bold',
-  },
-  panelHint: {
-    color: '#0ff8',
-    fontSize: 10,
-  },
-  row: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 8,
-  },
-  label: {
-    width: 72,
-    flexShrink: 0,
-    color: '#888',
-    fontSize: 11,
-  },
-  slider: {
-    flex: 1,
-    height: 4,
-    accentColor: '#0ff',
-    cursor: 'pointer',
-  },
-  value: {
-    width: 48,
-    textAlign: 'right',
-    color: '#0ff',
-    fontSize: 11,
-    flexShrink: 0,
-  },
-  colorInput: {
-    width: 32,
-    height: 24,
-    border: 'none',
-    background: 'none',
-    cursor: 'pointer',
-  },
+  panelTitle: { color: '#0ff', fontSize: 13, fontWeight: 'bold' },
+  panelHint: { color: '#0ff8', fontSize: 10 },
+  row: { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 },
+  label: { width: 72, flexShrink: 0, color: '#888', fontSize: 11 },
+  slider: { flex: 1, height: 4, accentColor: '#0ff', cursor: 'pointer' },
+  value: { width: 48, textAlign: 'right', color: '#0ff', fontSize: 11, flexShrink: 0 },
+  colorInput: { width: 32, height: 24, border: 'none', background: 'none', cursor: 'pointer' },
   select: {
-    flex: 1,
-    background: '#111',
-    color: '#0ff',
-    border: '1px solid #0ff3',
-    borderRadius: 4,
-    padding: '2px 6px',
-    fontSize: 11,
-    fontFamily: 'monospace',
+    flex: 1, background: '#111', color: '#0ff', border: '1px solid #0ff3',
+    borderRadius: 4, padding: '2px 6px', fontSize: 11, fontFamily: 'monospace',
   },
   toggleBtn: {
-    flex: 1,
-    background: '#fff1',
-    color: '#0ff',
-    border: '1px solid #0ff3',
-    borderRadius: 4,
-    padding: '4px 8px',
-    fontSize: 11,
-    fontFamily: 'monospace',
-    cursor: 'pointer',
+    flex: 1, background: '#fff1', color: '#0ff', border: '1px solid #0ff3',
+    borderRadius: 4, padding: '4px 8px', fontSize: 11, fontFamily: 'monospace', cursor: 'pointer',
   },
   resetBtn: {
-    background: 'none',
-    color: '#f66',
-    border: '1px solid #f663',
-    borderRadius: 4,
-    padding: '4px 16px',
-    fontSize: 11,
-    fontFamily: 'monospace',
-    cursor: 'pointer',
+    background: 'none', color: '#f66', border: '1px solid #f663',
+    borderRadius: 4, padding: '4px 16px', fontSize: 11, fontFamily: 'monospace', cursor: 'pointer',
   },
 }
