@@ -174,13 +174,12 @@ async function loadBinFile(file: File, maxCount: number): Promise<PointCloudData
   const count = Math.min(totalCount, maxCount)
   let indices: number[]
   if (count < totalCount) {
-    // Fisher-Yates 部分洗牌，只取前 count 个
-    const allIdx = Array.from({ length: totalCount }, (_, i) => i)
-    for (let i = totalCount - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [allIdx[i], allIdx[j]] = [allIdx[j], allIdx[i]]
+    // 用 Set 高效随机采样，避免全量洗牌
+    const selected = new Set<number>()
+    while (selected.size < count) {
+      selected.add(Math.floor(Math.random() * totalCount))
     }
-    indices = allIdx.slice(0, count).sort((a, b) => a - b)
+    indices = Array.from(selected).sort((a, b) => a - b)
   } else {
     indices = Array.from({ length: totalCount }, (_, i) => i)
   }
