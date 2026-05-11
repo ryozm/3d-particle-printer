@@ -8,4 +8,4 @@ CLI tsup v8.5.1
 CLI Target: es2020
 ESM Build start
 ESM dist/index.js 103.00 B
-ESM ⚡️ Build success in 32ms
+ESM ⚡️ Build success in 33ms

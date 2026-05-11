@@ -59,9 +59,27 @@ function useTestPointCloud(count: number) {
 
 // ─── 粒子组件 ───────────────────────────────────────────
 
-function ParticleCloud({ params }: { params: DebugParams }) {
+interface ParticleCloudProps {
+  progressRef: React.MutableRefObject<number>
+  color: string
+  pointSize: number
+  particleCount: number
+  dropOffset: number
+  glowIntensity: number
+  blendMode: 'additive' | 'normal'
+}
+
+function ParticleCloud({
+  progressRef,
+  color,
+  pointSize,
+  particleCount,
+  dropOffset,
+  glowIntensity,
+  blendMode,
+}: ParticleCloudProps) {
   const materialRef = useRef<THREE.ShaderMaterial>(null!)
-  const { positions, delays, speeds, count } = useTestPointCloud(params.particleCount)
+  const { positions, delays, speeds, count } = useTestPointCloud(particleCount)
 
   const geometry = useMemo(() => {
     const geo = new THREE.BufferGeometry()
@@ -71,23 +89,38 @@ function ParticleCloud({ params }: { params: DebugParams }) {
     return geo
   }, [positions, delays, speeds])
 
+  // 每帧直接从 ref 读取 progress，不触发 re-render
   useFrame(({ clock }) => {
     const mat = materialRef.current
     if (!mat) return
     mat.uniforms.uTime.value = clock.getElapsedTime()
-    // progress 由外部控制，这里不自动更新
+    mat.uniforms.uProgress.value = progressRef.current
   })
 
-  // 同步外部参数到 uniform
+  // 非动画参数通过 useEffect 同步
   useEffect(() => {
     const mat = materialRef.current
     if (!mat) return
-    mat.uniforms.uProgress.value = params.progress
-    mat.uniforms.uColor.value.set(params.color)
-    mat.uniforms.uPointSize.value = params.pointSize
-    mat.uniforms.uDropOffset.value = params.dropOffset
-    mat.uniforms.uGlowIntensity.value = params.glowIntensity
-  }, [params])
+    mat.uniforms.uColor.value.set(color)
+  }, [color])
+
+  useEffect(() => {
+    const mat = materialRef.current
+    if (!mat) return
+    mat.uniforms.uPointSize.value = pointSize
+  }, [pointSize])
+
+  useEffect(() => {
+    const mat = materialRef.current
+    if (!mat) return
+    mat.uniforms.uDropOffset.value = dropOffset
+  }, [dropOffset])
+
+  useEffect(() => {
+    const mat = materialRef.current
+    if (!mat) return
+    mat.uniforms.uGlowIntensity.value = glowIntensity
+  }, [glowIntensity])
 
   return (
     <points geometry={geometry}>
@@ -97,36 +130,55 @@ function ParticleCloud({ params }: { params: DebugParams }) {
         fragmentShader={particleFrag}
         uniforms={{
           uTime: { value: 0 },
-          uProgress: { value: params.progress },
-          uColor: { value: new THREE.Color(params.color) },
-          uPointSize: { value: params.pointSize },
-          uDropOffset: { value: params.dropOffset },
-          uGlowIntensity: { value: params.glowIntensity },
+          uProgress: { value: 0 },
+          uColor: { value: new THREE.Color(color) },
+          uPointSize: { value: pointSize },
+          uDropOffset: { value: dropOffset },
+          uGlowIntensity: { value: glowIntensity },
         }}
         transparent
         depthWrite={false}
-        blending={params.blendMode === 'additive' ? THREE.AdditiveBlending : THREE.NormalBlending}
+        blending={blendMode === 'additive' ? THREE.AdditiveBlending : THREE.NormalBlending}
       />
     </points>
   )
 }
 
-// ─── 自动播放控制器 ─────────────────────────────────────
+// ─── 自动播放控制器（只更新 ref，不触发 re-render）────
 
 function AutoPlayController({
   autoPlay,
   speed,
-  onProgressChange,
+  progressRef,
 }: {
   autoPlay: boolean
   speed: number
-  onProgressChange: (v: number) => void
+  progressRef: React.MutableRefObject<number>
 }) {
   useFrame(({ clock }) => {
     if (!autoPlay) return
     const t = clock.getElapsedTime() * speed
-    const progress = (t % 2) / 2 // 2 秒一个周期
-    onProgressChange(progress)
+    progressRef.current = (t % 2) / 2
+  })
+  return null
+}
+
+// ─── 进度同步（手动拖拽时把 ref 同步回 state 用于显示）──
+
+function ProgressSync({
+  autoPlay,
+  progressRef,
+  onProgressDisplay,
+}: {
+  autoPlay: boolean
+  progressRef: React.MutableRefObject<number>
+  onProgressDisplay: (v: number) => void
+}) {
+  useFrame(() => {
+    if (autoPlay) {
+      // 自动播放时每帧同步到 UI 显示（节流：每 5 帧更新一次 UI）
+      onProgressDisplay(progressRef.current)
+    }
   })
   return null
 }
@@ -136,17 +188,12 @@ function AutoPlayController({
 function DebugPanel({
   params,
   onParamsChange,
+  onProgressManual,
 }: {
   params: DebugParams
-  onParamsChange: (p: DebugParams) => void
+  onParamsChange: (p: Partial<DebugParams>) => void
+  onProgressManual: (v: number) => void
 }) {
-  const update = useCallback(
-    (key: keyof DebugParams, value: DebugParams[keyof DebugParams]) => {
-      onParamsChange({ ...params, [key]: value })
-    },
-    [params, onParamsChange]
-  )
-
   return (
     <div style={styles.panel}>
       <div style={styles.panelHeader}>
@@ -164,7 +211,7 @@ function DebugPanel({
           step={0.001}
           value={params.progress}
           disabled={params.autoPlay}
-          onChange={(e) => update('progress', parseFloat(e.target.value))}
+          onChange={(e) => onProgressManual(parseFloat(e.target.value))}
           style={styles.slider}
         />
         <span style={styles.value}>{(params.progress * 100).toFixed(1)}%</span>
@@ -174,7 +221,7 @@ function DebugPanel({
       <div style={styles.row}>
         <label style={styles.label}>Auto Play</label>
         <button
-          onClick={() => update('autoPlay', !params.autoPlay)}
+          onClick={() => onParamsChange({ autoPlay: !params.autoPlay })}
           style={{
             ...styles.toggleBtn,
             background: params.autoPlay ? '#0ff2' : '#fff1',
@@ -193,7 +240,7 @@ function DebugPanel({
           max={3}
           step={0.1}
           value={params.speed}
-          onChange={(e) => update('speed', parseFloat(e.target.value))}
+          onChange={(e) => onParamsChange({ speed: parseFloat(e.target.value) })}
           style={styles.slider}
         />
         <span style={styles.value}>{params.speed.toFixed(1)}x</span>
@@ -205,7 +252,7 @@ function DebugPanel({
         <input
           type="color"
           value={params.color}
-          onChange={(e) => update('color', e.target.value)}
+          onChange={(e) => onParamsChange({ color: e.target.value })}
           style={styles.colorInput}
         />
         <span style={styles.value}>{params.color}</span>
@@ -220,7 +267,7 @@ function DebugPanel({
           max={10}
           step={0.1}
           value={params.pointSize}
-          onChange={(e) => update('pointSize', parseFloat(e.target.value))}
+          onChange={(e) => onParamsChange({ pointSize: parseFloat(e.target.value) })}
           style={styles.slider}
         />
         <span style={styles.value}>{params.pointSize.toFixed(1)}</span>
@@ -235,7 +282,7 @@ function DebugPanel({
           max={2}
           step={0.01}
           value={params.dropOffset}
-          onChange={(e) => update('dropOffset', parseFloat(e.target.value))}
+          onChange={(e) => onParamsChange({ dropOffset: parseFloat(e.target.value) })}
           style={styles.slider}
         />
         <span style={styles.value}>{params.dropOffset.toFixed(2)}</span>
@@ -250,7 +297,7 @@ function DebugPanel({
           max={2}
           step={0.01}
           value={params.glowIntensity}
-          onChange={(e) => update('glowIntensity', parseFloat(e.target.value))}
+          onChange={(e) => onParamsChange({ glowIntensity: parseFloat(e.target.value) })}
           style={styles.slider}
         />
         <span style={styles.value}>{params.glowIntensity.toFixed(2)}</span>
@@ -261,7 +308,7 @@ function DebugPanel({
         <label style={styles.label}>Particles</label>
         <select
           value={params.particleCount}
-          onChange={(e) => update('particleCount', parseInt(e.target.value))}
+          onChange={(e) => onParamsChange({ particleCount: parseInt(e.target.value) })}
           style={styles.select}
         >
           <option value={10000}>10,000</option>
@@ -275,7 +322,7 @@ function DebugPanel({
       <div style={styles.row}>
         <label style={styles.label}>Blend</label>
         <button
-          onClick={() => update('blendMode', params.blendMode === 'additive' ? 'normal' : 'additive')}
+          onClick={() => onParamsChange({ blendMode: params.blendMode === 'additive' ? 'normal' : 'additive' })}
           style={styles.toggleBtn}
         >
           {params.blendMode === 'additive' ? '✨ Additive' : '🔵 Normal'}
@@ -296,17 +343,60 @@ function DebugPanel({
 
 export default function App() {
   const [params, setParams] = useState<DebugParams>(DEFAULT_PARAMS)
+  const progressRef = useRef(0)
+  const frameCounter = useRef(0)
+  const [displayProgress, setDisplayProgress] = useState(0)
+
+  // 同步手动拖拽到 ref
+  useEffect(() => {
+    progressRef.current = params.progress
+  }, [params.progress])
+
+  // 面板参数更新（合并 patch）
+  const handleParamsChange = useCallback((patch: Partial<DebugParams>) => {
+    setParams((prev) => ({ ...prev, ...patch }))
+  }, [])
+
+  // 手动拖拽进度条
+  const handleProgressManual = useCallback((v: number) => {
+    progressRef.current = v
+    setParams((p) => ({ ...p, progress: v }))
+  }, [])
+
+  // 自动播放时同步进度到 UI 显示（每 3 帧更新一次，避免 UI 卡顿）
+  const handleProgressDisplay = useCallback((v: number) => {
+    frameCounter.current++
+    if (frameCounter.current % 3 === 0) {
+      setDisplayProgress(v)
+      setParams((p) => ({ ...p, progress: v }))
+    }
+  }, [])
+
+  const progress = params.autoPlay ? displayProgress : params.progress
 
   return (
     <div style={{ width: '100vw', height: '100vh', background: '#000' }}>
       <Canvas camera={{ position: [0, 0, 4], fov: 60 }}>
         <color attach="background" args={['#000000']} />
         <ambientLight intensity={0.5} />
-        <ParticleCloud params={params} />
+        <ParticleCloud
+          progressRef={progressRef}
+          color={params.color}
+          pointSize={params.pointSize}
+          particleCount={params.particleCount}
+          dropOffset={params.dropOffset}
+          glowIntensity={params.glowIntensity}
+          blendMode={params.blendMode}
+        />
         <AutoPlayController
           autoPlay={params.autoPlay}
           speed={params.speed}
-          onProgressChange={(v) => setParams((p) => ({ ...p, progress: v }))}
+          progressRef={progressRef}
+        />
+        <ProgressSync
+          autoPlay={params.autoPlay}
+          progressRef={progressRef}
+          onProgressDisplay={handleProgressDisplay}
         />
         <OrbitControls enableDamping />
       </Canvas>
@@ -320,7 +410,11 @@ export default function App() {
       </div>
 
       {/* 调试面板 */}
-      <DebugPanel params={params} onParamsChange={setParams} />
+      <DebugPanel
+        params={{ ...params, progress }}
+        onParamsChange={handleParamsChange}
+        onProgressManual={handleProgressManual}
+      />
     </div>
   )
 }
