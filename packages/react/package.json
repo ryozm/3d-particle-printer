@@ -1,0 +1,35 @@
+{
+  "name": "@particle-printer/react",
+  "version": "0.0.1",
+  "description": "React / React Three Fiber 适配层 — 3D 粒子打印动效",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsup src/index.tsx --format esm --dts --outDir dist --external react three @react-three/fiber",
+    "dev": "tsup src/index.tsx --format esm --dts --outDir dist --external react three @react-three/fiber --watch",
+    "clean": "rm -rf dist"
+  },
+  "keywords": ["react", "r3f", "threejs", "particle", "printer"],
+  "license": "MIT",
+  "dependencies": {
+    "@particle-printer/core": "workspace:*"
+  },
+  "peerDependencies": {
+    "react": ">=18",
+    "three": ">=0.170.0",
+    "@react-three/fiber": ">=8"
+  },
+  "devDependencies": {
+    "@types/react": "^18",
+    "tsup": "^8"
+  }
+}

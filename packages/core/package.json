@@ -1,0 +1,30 @@
+{
+  "name": "@particle-printer/core",
+  "version": "0.0.1",
+  "description": "纯 Vanilla Three.js 实现的 3D 粒子打印动效核心",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./shaders/*": "./src/shaders/*"
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --dts --outDir dist",
+    "dev": "tsup src/index.ts --format esm --dts --outDir dist --watch",
+    "clean": "rm -rf dist"
+  },
+  "keywords": ["threejs", "3d", "particle", "printer", "animation"],
+  "license": "MIT",
+  "dependencies": {
+    "three": "^0.170.0"
+  },
+  "devDependencies": {
+    "tsup": "^8"
+  }
+}

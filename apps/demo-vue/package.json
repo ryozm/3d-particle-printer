@@ -1,0 +1,21 @@
+{
+  "name": "@particle-printer/demo-vue",
+  "private": true,
+  "version": "0.0.0",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@particle-printer/vue": "workspace:*",
+    "vue": "^3",
+    "three": "^0.170.0",
+    "@tresjs/core": "^4"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5",
+    "vite": "^6"
+  }
+}
