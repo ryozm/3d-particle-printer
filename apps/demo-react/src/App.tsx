@@ -560,7 +560,18 @@ export default function App() {
   }, [])
 
   const handlePatch = useCallback((patch: Partial<DebugParams>) => {
-    setParams((p) => ({ ...p, ...patch }))
+    setParams((p) => {
+      const next = { ...p, ...patch }
+      // 暂停 → 恢复时，调整 startTimeRef 让动画从当前位置继续
+      if (p.autoPlay && !next.autoPlay) {
+        // 暂停：什么都不用做，progressRef 已经是当前值
+      } else if (!p.autoPlay && next.autoPlay) {
+        // 恢复：startTimeRef = 当前时钟 - 已播放时间
+        const now = clockRef.current?.getElapsedTime() ?? 0
+        startTimeRef.current = now - (progressRef.current * 2 / next.speed)
+      }
+      return next
+    })
   }, [])
 
   const handleFinish = useCallback(() => {
