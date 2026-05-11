@@ -14,8 +14,9 @@
   },
   "files": ["dist"],
   "scripts": {
-    "build": "tsup src/index.tsx --format esm --dts --outDir dist --external react three @react-three/fiber",
-    "dev": "tsup src/index.tsx --format esm --dts --outDir dist --external react three @react-three/fiber --watch",
+    "build": "tsup src/index.tsx --format esm --outDir dist --external react three @react-three/fiber",
+    "build:types": "tsc --emitDeclarationOnly --outDir dist",
+    "dev": "tsup src/index.tsx --format esm --outDir dist --external react three @react-three/fiber --watch",
     "clean": "rm -rf dist"
   },
   "keywords": ["react", "r3f", "threejs", "particle", "printer"],

@@ -5,6 +5,10 @@
       "dependsOn": ["^build"],
       "outputs": ["dist/**"]
     },
+    "build:types": {
+      "dependsOn": ["build"],
+      "outputs": ["dist/**/*.d.ts"]
+    },
     "dev": {
       "cache": false,
       "persistent": true

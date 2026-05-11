@@ -1,0 +1,19 @@
+
+> @particle-printer/demo-react@0.0.0 build /home/ryozm/projects/endfield-3d-printer/apps/demo-react
+> vite build
+
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+vite v6.4.2 building for production...
+transforming...
+✓ 614 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   0.40 kB │ gzip:   0.29 kB
+dist/assets/index-DKifgvl2.css    0.08 kB │ gzip:   0.10 kB
+dist/assets/index-D12ZWf4s.js   986.46 kB │ gzip: 272.29 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 11.28s

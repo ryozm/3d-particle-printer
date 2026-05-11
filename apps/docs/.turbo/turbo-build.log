@@ -1,0 +1,60 @@
+
+> @particle-printer/docs@0.0.0 build /home/ryozm/projects/endfield-3d-printer/apps/docs
+> vitepress build
+
+✘ [ERROR] "vitepress" resolved to an ESM file. ESM file cannot be loaded by `require`. See https://vite.dev/guide/troubleshooting.html#this-package-is-esm-only for more details. [plugin externalize-deps]
+
+    ../../node_modules/.pnpm/esbuild@0.21.5/node_modules/esbuild/lib/main.js:1225:27:
+      1225 │         let result = await callback({
+           ╵                            ^
+
+    at file:///home/ryozm/projects/endfield-3d-printer/node_modules/.pnpm/vite@5.4.21/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:66928:23
+    at requestCallbacks.on-resolve (/home/ryozm/projects/endfield-3d-printer/node_modules/.pnpm/esbuild@0.21.5/node_modules/esbuild/lib/main.js:1225:28)
+    at handleRequest (/home/ryozm/projects/endfield-3d-printer/node_modules/.pnpm/esbuild@0.21.5/node_modules/esbuild/lib/main.js:647:17)
+    at handleIncomingPacket (/home/ryozm/projects/endfield-3d-printer/node_modules/.pnpm/esbuild@0.21.5/node_modules/esbuild/lib/main.js:672:7)
+    at Socket.readFromStdout (/home/ryozm/projects/endfield-3d-printer/node_modules/.pnpm/esbuild@0.21.5/node_modules/esbuild/lib/main.js:600:7)
+    at Socket.emit (node:events:517:28)
+    at addChunk (node:internal/streams/readable:368:12)
+    at readableAddChunk (node:internal/streams/readable:341:9)
+    at Readable.push (node:internal/streams/readable:278:10)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:190:23)
+
+  This error came from the "onResolve" callback registered here:
+
+    ../../node_modules/.pnpm/esbuild@0.21.5/node_modules/esbuild/lib/main.js:1150:20:
+      1150 │       let promise = setup({
+           ╵                     ^
+
+    at setup (file:///home/ryozm/projects/endfield-3d-printer/node_modules/.pnpm/vite@5.4.21/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:66890:18)
+    at handlePlugins (/home/ryozm/projects/endfield-3d-printer/node_modules/.pnpm/esbuild@0.21.5/node_modules/esbuild/lib/main.js:1150:21)
+    at buildOrContextImpl (/home/ryozm/projects/endfield-3d-printer/node_modules/.pnpm/esbuild@0.21.5/node_modules/esbuild/lib/main.js:873:5)
+    at Object.buildOrContext (/home/ryozm/projects/endfield-3d-printer/node_modules/.pnpm/esbuild@0.21.5/node_modules/esbuild/lib/main.js:699:5)
+    at /home/ryozm/projects/endfield-3d-printer/node_modules/.pnpm/esbuild@0.21.5/node_modules/esbuild/lib/main.js:2023:15
+    at new Promise (<anonymous>)
+    at Object.build (/home/ryozm/projects/endfield-3d-printer/node_modules/.pnpm/esbuild@0.21.5/node_modules/esbuild/lib/main.js:2022:25)
+    at build (/home/ryozm/projects/endfield-3d-printer/node_modules/.pnpm/esbuild@0.21.5/node_modules/esbuild/lib/main.js:1873:51)
+    at bundleConfigFile (file:///home/ryozm/projects/endfield-3d-printer/node_modules/.pnpm/vite@5.4.21/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:66845:24)
+
+  The plugin "externalize-deps" was triggered by this import
+
+    .vitepress/config.ts:1:380:
+      1 │ ...docs/.vitepress/config.ts";import { defineConfig } from 'vitepress'
+        ╵                                                            ~~~~~~~~~~~
+
+failed to load config from /home/ryozm/projects/endfield-3d-printer/apps/docs/.vitepress/config.ts
+build error:
+Build failed with 1 error:
+../../node_modules/.pnpm/esbuild@0.21.5/node_modules/esbuild/lib/main.js:1225:27: ERROR: [plugin: externalize-deps] "vitepress" resolved to an ESM file. ESM file cannot be loaded by `require`. See https://vite.dev/guide/troubleshooting.html#this-package-is-esm-only for more details.
+Error: Build failed with 1 error:
+../../node_modules/.pnpm/esbuild@0.21.5/node_modules/esbuild/lib/main.js:1225:27: ERROR: [plugin: externalize-deps] "vitepress" resolved to an ESM file. ESM file cannot be loaded by `require`. See https://vite.dev/guide/troubleshooting.html#this-package-is-esm-only for more details.
+    at failureErrorWithLog (/home/ryozm/projects/endfield-3d-printer/node_modules/.pnpm/esbuild@0.21.5/node_modules/esbuild/lib/main.js:1472:15)
+    at /home/ryozm/projects/endfield-3d-printer/node_modules/.pnpm/esbuild@0.21.5/node_modules/esbuild/lib/main.js:945:25
+    at runOnEndCallbacks (/home/ryozm/projects/endfield-3d-printer/node_modules/.pnpm/esbuild@0.21.5/node_modules/esbuild/lib/main.js:1315:45)
+    at buildResponseToResult (/home/ryozm/projects/endfield-3d-printer/node_modules/.pnpm/esbuild@0.21.5/node_modules/esbuild/lib/main.js:943:7)
+    at /home/ryozm/projects/endfield-3d-printer/node_modules/.pnpm/esbuild@0.21.5/node_modules/esbuild/lib/main.js:970:16
+    at responseCallbacks.<computed> (/home/ryozm/projects/endfield-3d-printer/node_modules/.pnpm/esbuild@0.21.5/node_modules/esbuild/lib/main.js:622:9)
+    at handleIncomingPacket (/home/ryozm/projects/endfield-3d-printer/node_modules/.pnpm/esbuild@0.21.5/node_modules/esbuild/lib/main.js:677:12)
+    at Socket.readFromStdout (/home/ryozm/projects/endfield-3d-printer/node_modules/.pnpm/esbuild@0.21.5/node_modules/esbuild/lib/main.js:600:7)
+    at Socket.emit (node:events:517:28)
+    at addChunk (node:internal/streams/readable:368:12)
+ ELIFECYCLE  Command failed with exit code 1.

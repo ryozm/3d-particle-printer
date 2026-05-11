@@ -1,0 +1,11 @@
+
+> @particle-printer/react@0.0.1 build /home/ryozm/projects/endfield-3d-printer/packages/react
+> tsup src/index.tsx --format esm --outDir dist --external react three @react-three/fiber
+
+CLI Building entry: src/index.tsx
+CLI Using tsconfig: tsconfig.json
+CLI tsup v8.5.1
+CLI Target: es2020
+ESM Build start
+ESM dist/index.js 103.00 B
+ESM ⚡️ Build success in 32ms
