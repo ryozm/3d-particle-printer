@@ -29,6 +29,8 @@ interface DebugParams {
   blendMode: 'additive' | 'normal'
 }
 
+const MODEL_SAMPLE_COUNT = 100000 // 模型加载时的采样数量
+
 const DEFAULT_PARAMS: DebugParams = {
   progress: 0,
   autoPlay: true,
@@ -274,7 +276,18 @@ function ParticleCloud({
   blendMode,
 }: ParticleCloudProps) {
   const testData = useTestPointCloud(particleCount)
-  const data = modelData ?? testData
+
+  // 有自定义模型时，根据 particleCount 截取子集
+  const data: PointCloudData = useMemo(() => {
+    if (!modelData) return testData
+    const count = Math.min(particleCount, modelData.count)
+    if (count >= modelData.count) return modelData
+    return {
+      positions: modelData.positions.subarray(0, count * 3),
+      normals: modelData.normals?.subarray(0, count * 3),
+      count,
+    }
+  }, [modelData, testData, particleCount])
   const { delays, speeds } = useMemo(() => computeParticleAttrs(data), [data])
 
   const geometry = useMemo(() => {
@@ -609,10 +622,9 @@ export default function App() {
     setLoading(true)
     setModelInfo(`Loading: ${file.name}`)
     try {
-      const data = await processFile(file, params.particleCount)
+      const data = await processFile(file, MODEL_SAMPLE_COUNT)
       setModelData(data)
       setModelInfo(`${file.name} (${data.count.toLocaleString()} pts)`)
-      // 重置播放
       progressRef.current = 0
       startTimeRef.current = clockRef.current?.getElapsedTime() ?? 0
       setFinished(false)
@@ -623,7 +635,7 @@ export default function App() {
     } finally {
       setLoading(false)
     }
-  }, [params.particleCount])
+  }, [])
 
   // 恢复默认模型
   const handleResetModel = useCallback(() => {
