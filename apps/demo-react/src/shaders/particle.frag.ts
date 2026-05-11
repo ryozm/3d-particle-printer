@@ -4,6 +4,7 @@
 export default /* glsl */ `
   uniform vec3 uColor;
   uniform float uTime;
+  uniform float uGlowIntensity;
 
   varying float vProgress;
   varying float vAlpha;
@@ -15,7 +16,7 @@ export default /* glsl */ `
     if (dist > 0.5) discard;
 
     float core = smoothstep(0.5, 0.0, dist);
-    float glow = smoothstep(0.5, 0.1, dist) * 0.6;
+    float glow = smoothstep(0.5, 0.1, dist) * uGlowIntensity;
     float brightness = core + glow;
 
     vec3 color = uColor * (0.5 + vProgress * 0.5);

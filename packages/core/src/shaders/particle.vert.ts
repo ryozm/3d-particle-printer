@@ -10,6 +10,7 @@ export default /* glsl */ `
   uniform float uTime;
   uniform float uProgress;
   uniform float uPointSize;
+  uniform float uDropOffset;
 
   attribute float aDelay;
   attribute float aSpeed;
@@ -26,7 +27,7 @@ export default /* glsl */ `
     vec3 pos = position;
 
     // 粒子从上方下落到目标位置的动画
-    float dropOffset = (1.0 - particleProgress) * 0.5;
+    float dropOffset = (1.0 - particleProgress) * uDropOffset;
     pos.y += dropOffset;
 
     // 透明度：未打印的粒子完全透明

@@ -5,6 +5,7 @@ export default /* glsl */ `
   uniform float uTime;
   uniform float uProgress;
   uniform float uPointSize;
+  uniform float uDropOffset;
 
   attribute float aDelay;
   attribute float aSpeed;
@@ -19,8 +20,8 @@ export default /* glsl */ `
     vec3 pos = position;
 
     // 粒子从上方下落到目标位置
-    float dropOffset = (1.0 - particleProgress) * 0.5;
-    pos.y += dropOffset;
+    float drop = (1.0 - particleProgress) * uDropOffset;
+    pos.y += drop;
 
     vAlpha = smoothstep(0.0, 0.1, particleProgress);
 
