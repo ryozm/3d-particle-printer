@@ -10,6 +10,7 @@ import particleFrag from './shaders/particle.frag'
 interface DebugParams {
   progress: number
   autoPlay: boolean
+  loop: boolean
   speed: number
   color: string
   pointSize: number
@@ -22,12 +23,13 @@ interface DebugParams {
 const DEFAULT_PARAMS: DebugParams = {
   progress: 0,
   autoPlay: true,
+  loop: true,
   speed: 1.0,
-  color: '#00ffff',
-  pointSize: 3.0,
-  particleCount: 30000,
-  dropOffset: 0.5,
-  glowIntensity: 0.6,
+  color: '#9fadad',
+  pointSize: 0.5,
+  particleCount: 10000,
+  dropOffset: 2.0,
+  glowIntensity: 0.0,
   blendMode: 'additive',
 }
 
@@ -135,17 +137,23 @@ function ParticleCloud({
 
 function AutoPlayController({
   autoPlay,
+  loop,
   speed,
   progressRef,
 }: {
   autoPlay: boolean
+  loop: boolean
   speed: number
   progressRef: React.MutableRefObject<number>
 }) {
   useFrame(({ clock }) => {
     if (!autoPlay) return
     const t = clock.getElapsedTime() * speed
-    progressRef.current = (t % 2) / 2
+    if (loop) {
+      progressRef.current = (t % 2) / 2
+    } else {
+      progressRef.current = Math.min(t / 2, 1) // 播放到 1 就停
+    }
   })
   return null
 }
@@ -214,6 +222,20 @@ function DebugPanel({
         </button>
       </div>
 
+      {/* Loop */}
+      <div style={styles.row}>
+        <label style={styles.label}>Loop</label>
+        <label style={styles.checkboxLabel}>
+          <input
+            type="checkbox"
+            checked={params.loop}
+            onChange={(e) => onPatch({ loop: e.target.checked })}
+            style={styles.checkbox}
+          />
+          {params.loop ? '循环播放' : '单次播放'}
+        </label>
+      </div>
+
       {/* Speed */}
       <div style={styles.row}>
         <label style={styles.label}>Speed</label>
@@ -249,7 +271,7 @@ function DebugPanel({
       {/* Drop Offset */}
       <div style={styles.row}>
         <label style={styles.label}>Drop Offset</label>
-        <input type="range" min={0} max={2} step={0.01}
+        <input type="range" min={0} max={10} step={0.01}
           value={params.dropOffset}
           onChange={(e) => onPatch({ dropOffset: parseFloat(e.target.value) })}
           style={styles.slider}
@@ -271,15 +293,22 @@ function DebugPanel({
       {/* Particle Count */}
       <div style={styles.row}>
         <label style={styles.label}>Particles</label>
-        <select value={params.particleCount}
+        <input type="range" min={100} max={10000} step={100}
+          value={params.particleCount}
           onChange={(e) => onPatch({ particleCount: parseInt(e.target.value) })}
-          style={styles.select}
-        >
-          <option value={10000}>10,000</option>
-          <option value={30000}>30,000</option>
-          <option value={50000}>50,000</option>
-          <option value={100000}>100,000</option>
-        </select>
+          style={styles.slider}
+        />
+        <input
+          type="number"
+          min={1}
+          max={100000}
+          value={params.particleCount}
+          onChange={(e) => {
+            const v = parseInt(e.target.value)
+            if (!isNaN(v) && v > 0) onPatch({ particleCount: v })
+          }}
+          style={styles.numberInput}
+        />
       </div>
 
       {/* Blend Mode */}
@@ -338,6 +367,7 @@ export default function App() {
         />
         <AutoPlayController
           autoPlay={params.autoPlay}
+          loop={params.loop}
           speed={params.speed}
           progressRef={progressRef}
         />
@@ -394,6 +424,18 @@ const styles: Record<string, React.CSSProperties> = {
   select: {
     flex: 1, background: '#111', color: '#0ff', border: '1px solid #0ff3',
     borderRadius: 4, padding: '2px 6px', fontSize: 11, fontFamily: 'monospace',
+  },
+  numberInput: {
+    width: 56, background: '#111', color: '#0ff', border: '1px solid #0ff3',
+    borderRadius: 4, padding: '2px 6px', fontSize: 11, fontFamily: 'monospace',
+    textAlign: 'right' as const,
+  },
+  checkboxLabel: {
+    flex: 1, display: 'flex', alignItems: 'center', gap: 6,
+    color: '#0ff', fontSize: 11, cursor: 'pointer',
+  },
+  checkbox: {
+    accentColor: '#0ff', cursor: 'pointer', width: 14, height: 14,
   },
   toggleBtn: {
     flex: 1, background: '#fff1', color: '#0ff', border: '1px solid #0ff3',
